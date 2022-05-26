@@ -82,6 +82,10 @@ func main() {
 				readFromTextFile("./replies/jokes.txt"))
 		}
 
+		if message.Message == "!github" {
+			nurdbotSay(message, "https://github.com/justJay-dev/nurdbot-go")
+		}
+
 		if message.Message == "!fart" {
 			nurdbotSay(message,
 				readFromTextFile("./replies/farts.txt"))
