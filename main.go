@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"io/ioutil"
 
@@ -45,8 +47,35 @@ func main() {
 		return lines[rand.Intn(len(lines))]
 	}
 
+	//write out any message into a json file named %CURRENT_DATE%.json
+	type LogMessage struct {
+		Message string `json:"message"`
+		User    string `json:"user"`
+		Channel string `json:"channel"`
+		Time    string `json:"time"`
+	}
+
+	writeLog := func(message twitch.PrivateMessage) {
+		log := LogMessage{
+			Message: message.Message,
+			User:    message.User.Name,
+			Channel: message.Channel,
+			Time:    message.Time.String(),
+		}
+
+		fileName := time.Now().Format("2006-01-02") + ".json"
+		f, err := os.OpenFile("logs/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer f.Close()
+		data, _ := json.MarshalIndent(log, "", " ")
+		f.WriteString(string(data) + ",\n")
+	}
+
 	client.OnPrivateMessage(func(message twitch.PrivateMessage) {
 		fmt.Println(color.YellowString(message.User.Name+":"), message.Message)
+		writeLog(message)
 
 		if message.Message == "!joke" {
 			nurdbotSay(message,
@@ -64,7 +93,7 @@ func main() {
 		}
 
 		if message.Message == "!merch" {
-			nurdbotSay(message, "https://www.nurdbot.com/uwu")
+			nurdbotSay(message, "https://todo.todo.org")
 		}
 
 		if message.Message == "!uptime" {
@@ -85,11 +114,17 @@ func main() {
 		}
 
 		if message.User.Name == "missqueeney" {
-			// todo you are here. spongebob case
-			s := "averylargeword"
-			v := strings.SplitAfter(s, "")
-			fmt.Println(v) // [a v e r y l a r g e w o r d]
-			nurdbotSay(message, "hi queen :)")
+			// take the message.Message and turn it into spongbob case
+			v := strings.SplitAfter(message.Message, "")
+			for i := 0; i < len(v); i++ {
+				if i%2 == 0 {
+					v[i] = strings.ToUpper(v[i])
+
+				} else {
+					v[i] = strings.ToLower(v[i])
+				}
+			}
+			nurdbotSay(message, strings.Join(v, ""))
 		}
 
 	})
