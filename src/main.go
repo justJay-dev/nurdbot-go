@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -16,6 +15,10 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/joho/godotenv"
+
+	"gorm.io/gorm"
+
+	"github.com/glebarez/sqlite"
 )
 
 func init() {
@@ -27,11 +30,6 @@ func init() {
 
 func main() {
 	client := twitch.NewClient(os.Getenv("TWITCH_USERNAME"), os.Getenv("TWITCH_OAUTH"))
-
-	nurdbotSay := func(message twitch.PrivateMessage, output string) {
-		fmt.Println(color.BlueString("nurdbot:"), output)
-		client.Say(message.Channel, output)
-	}
 
 	readFromTextFile := func(fileName string) string {
 		file, err := os.Open(fileName)
@@ -49,28 +47,34 @@ func main() {
 
 	//write out any message into a json file named %CURRENT_DATE%.json
 	type LogMessage struct {
-		Message string `json:"message"`
-		User    string `json:"user"`
-		Channel string `json:"channel"`
-		Time    string `json:"time"`
+		gorm.Model
+		ID      uint      `gorm:"primaryKey" json:"id"`
+		Message string    `json:"message"`
+		User    string    `json:"user"`
+		Channel string    `json:"channel"`
+		Time    time.Time `json:"time"`
 	}
+	//do database stuff.
+	db, dbErr := gorm.Open(sqlite.Open("nurdbot.db"), &gorm.Config{})
+	if dbErr != nil {
+		panic("failed to connect database")
+	}
+
+	db.AutoMigrate(&LogMessage{})
 
 	writeLog := func(message twitch.PrivateMessage) {
 		log := LogMessage{
 			Message: message.Message,
 			User:    message.User.Name,
 			Channel: message.Channel,
-			Time:    message.Time.String(),
+			Time:    message.Time,
 		}
-
-		fileName := time.Now().Format("2006-01-02") + ".json"
-		f, err := os.OpenFile("logs/"+fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Println(err)
-		}
-		defer f.Close()
-		data, _ := json.MarshalIndent(log, "", " ")
-		f.WriteString(string(data) + ",\n")
+		db.Create(&log)
+	}
+	nurdbotSay := func(message twitch.PrivateMessage, output string) {
+		fmt.Println(color.BlueString("nurdbot:"), output)
+		db.Create(&LogMessage{Message: output, User: "nurdbot", Channel: message.Channel, Time: message.Time})
+		client.Say(message.Channel, output)
 	}
 
 	client.OnPrivateMessage(func(message twitch.PrivateMessage) {

@@ -1,6 +1,8 @@
 version: "2"
 services:
     kanboard:
+        environment:
+            - PLUGIN_INSTALLER=true
         image: kanboard/kanboard:latest
         ports:
             - "8069:80"
