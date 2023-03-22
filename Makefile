@@ -1,2 +1,2 @@
 run:
-	nodemon --ignore ./logs/ --exec "go run" src/main.go
+	nodemon --ignore ./database/ --exec "go run" src/main.go

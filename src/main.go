@@ -55,7 +55,7 @@ func main() {
 		Time    time.Time `json:"time"`
 	}
 	//do database stuff.
-	db, dbErr := gorm.Open(sqlite.Open("nurdbot.db"), &gorm.Config{})
+	db, dbErr := gorm.Open(sqlite.Open("./database/nurdbot.db"), &gorm.Config{})
 	if dbErr != nil {
 		panic("failed to connect database")
 	}
@@ -72,8 +72,11 @@ func main() {
 		db.Create(&log)
 	}
 	nurdbotSay := func(message twitch.PrivateMessage, output string) {
+		//terminal output
 		fmt.Println(color.BlueString("nurdbot:"), output)
+		//write the reply to the log, this is technically incorrect on timing but close enough.
 		db.Create(&LogMessage{Message: output, User: "nurdbot", Channel: message.Channel, Time: message.Time})
+		//actually write it in chat.
 		client.Say(message.Channel, output)
 	}
 
@@ -105,17 +108,17 @@ func main() {
 		}
 
 		if message.Message == "!uptime" {
-			resp, err := http.Get("https://beta.decapi.me/twitch/uptime/" + message.Channel)
+			resp, respErr := http.Get("https://beta.decapi.me/twitch/uptime/" + message.Channel)
 
-			if err != nil {
-				fmt.Println(err)
+			if respErr != nil {
+				fmt.Println(respErr)
 				nurdbotSay(message, "Error getting uptime :(")
 			}
 
-			body, err := ioutil.ReadAll(resp.Body)
+			body, bodyErr := ioutil.ReadAll(resp.Body)
 
-			if err != nil {
-				fmt.Println(err)
+			if bodyErr != nil {
+				fmt.Println(bodyErr)
 				nurdbotSay(message, "Error getting uptime :(")
 			}
 			nurdbotSay(message, string(body))
@@ -140,8 +143,8 @@ func main() {
 	client.Join("pnJay")
 	fmt.Println(color.BlueString("=== Beep boop. Nurdbot connected ==="))
 
-	err := client.Connect()
-	if err != nil {
-		panic(err)
+	twitchClientErr := client.Connect()
+	if twitchClientErr != nil {
+		panic(twitchClientErr)
 	}
 }
